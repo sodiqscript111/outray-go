@@ -51,7 +51,7 @@ type OpenTunnelRequest struct {
 	Type     string `json:"type"`
 	APIKey   string `json:"apiKey"`
 	Protocol string `json:"protocol"` // "http", "tcp", "udp"
-	Port     int    `json:"port"`
+	Port     int    `json:"remotePort"`
 }
 
 // ServerMessage represents any message received from the server.
@@ -70,7 +70,7 @@ type ServerMessage struct {
 
 // IncomingRequest represents a request forwarded from the public tunnel.
 type IncomingRequest struct {
-	ID      string            `json:"id"`
+	ID      string            `json:"requestId"`
 	Method  string            `json:"method"`
 	Path    string            `json:"path"`
 	Headers map[string]string `json:"headers"`
@@ -79,8 +79,8 @@ type IncomingRequest struct {
 
 // IncomingResponse represents a response sent back to the server.
 type IncomingResponse struct {
-	Type       string            `json:"type"` // "response"
-	ID         string            `json:"id"`   // Matches Request ID
+	Type       string            `json:"type"`      // "response"
+	ID         string            `json:"requestId"` // Matches Request ID
 	StatusCode int               `json:"statusCode"`
 	Headers    map[string]string `json:"headers"`
 	Body       []byte            `json:"body"`

@@ -26,7 +26,7 @@ import (
 	"log"
 	"os"
 
-	outray "github.com/yourusername/outray-go"
+	"github.com/sodiqscript111/outray-go"
 )
 
 func main() {

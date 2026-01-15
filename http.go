@@ -9,6 +9,12 @@ import (
 )
 
 func (c *Client) proxyHTTP(req IncomingRequest) IncomingResponse {
+	if c.config.RequestMiddleware != nil {
+		if earlyResp := c.config.RequestMiddleware(&req); earlyResp != nil {
+			return *earlyResp
+		}
+	}
+
 	targetURL := fmt.Sprintf("http://localhost:%d%s", c.config.Port, req.Path)
 
 	var bodyReader *strings.Reader
@@ -44,9 +50,15 @@ func (c *Client) proxyHTTP(req IncomingRequest) IncomingResponse {
 		respHeaders[k] = v[0]
 	}
 
-	return IncomingResponse{
+	response := IncomingResponse{
 		StatusCode: resp.StatusCode,
 		Headers:    respHeaders,
 		Body:       body,
 	}
+
+	if c.config.ResponseMiddleware != nil {
+		c.config.ResponseMiddleware(&req, &response)
+	}
+
+	return response
 }

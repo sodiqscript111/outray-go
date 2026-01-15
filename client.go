@@ -16,6 +16,10 @@ type Logger interface {
 	Printf(format string, v ...interface{})
 }
 
+type RequestMiddleware func(req *IncomingRequest) *IncomingResponse
+
+type ResponseMiddleware func(req *IncomingRequest, resp *IncomingResponse)
+
 type Option func(*Client)
 
 func WithAPIKey(key string) Option {
@@ -72,15 +76,29 @@ func WithSubdomain(subdomain string) Option {
 	}
 }
 
+func WithRequestMiddleware(fn RequestMiddleware) Option {
+	return func(c *Client) {
+		c.config.RequestMiddleware = fn
+	}
+}
+
+func WithResponseMiddleware(fn ResponseMiddleware) Option {
+	return func(c *Client) {
+		c.config.ResponseMiddleware = fn
+	}
+}
+
 type Config struct {
-	ServerURL string
-	APIKey    string
-	Protocol  string
-	Port      int
-	Subdomain string
-	OnOpen    func(url string)
-	OnRequest func(req IncomingRequest) IncomingResponse
-	OnError   func(err error)
+	ServerURL          string
+	APIKey             string
+	Protocol           string
+	Port               int
+	Subdomain          string
+	RequestMiddleware  RequestMiddleware
+	ResponseMiddleware ResponseMiddleware
+	OnOpen             func(url string)
+	OnRequest          func(req IncomingRequest) IncomingResponse
+	OnError            func(err error)
 }
 
 type Client struct {

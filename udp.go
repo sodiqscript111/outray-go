@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-// handleUDPData handles an incoming UDP packet from the tunnel server.
 func (c *Client) handleUDPData(packet UDPData) {
 	target := fmt.Sprintf("localhost:%d", c.config.Port)
 	conn, err := net.Dial("udp", target)

@@ -6,9 +6,7 @@ import (
 	"net"
 )
 
-// handleTCPConnection handles a new TCP connection from the tunnel server.
 func (c *Client) handleTCPConnection(connID string) {
-	// Dial local service
 	target := fmt.Sprintf("localhost:%d", c.config.Port)
 	localConn, err := net.Dial("tcp", target)
 	if err != nil {
@@ -22,7 +20,6 @@ func (c *Client) handleTCPConnection(connID string) {
 	c.tcpConns[connID] = localConn
 	c.tcpConnsMu.Unlock()
 
-	// Start reading from local conn and sending to server
 	go func() {
 		defer func() {
 			localConn.Close()
@@ -54,7 +51,6 @@ func (c *Client) handleTCPConnection(connID string) {
 	}()
 }
 
-// handleTCPData handles incoming TCP data from the tunnel server.
 func (c *Client) handleTCPData(connID string, dataB64 string) {
 	c.tcpConnsMu.Lock()
 	localConn, ok := c.tcpConns[connID]

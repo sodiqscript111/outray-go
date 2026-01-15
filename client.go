@@ -66,11 +66,18 @@ func WithOnError(fn func(err error)) Option {
 	}
 }
 
+func WithSubdomain(subdomain string) Option {
+	return func(c *Client) {
+		c.config.Subdomain = subdomain
+	}
+}
+
 type Config struct {
 	ServerURL string
 	APIKey    string
 	Protocol  string
 	Port      int
+	Subdomain string
 	OnOpen    func(url string)
 	OnRequest func(req IncomingRequest) IncomingResponse
 	OnError   func(err error)
@@ -176,10 +183,11 @@ func (c *Client) connectOnce(ctx context.Context) error {
 	}()
 
 	handshake := OpenTunnelRequest{
-		Type:     MsgTypeOpenTunnel,
-		APIKey:   c.config.APIKey,
-		Protocol: c.config.Protocol,
-		Port:     c.config.Port,
+		Type:      MsgTypeOpenTunnel,
+		APIKey:    c.config.APIKey,
+		Protocol:  c.config.Protocol,
+		Port:      c.config.Port,
+		Subdomain: c.config.Subdomain,
 	}
 
 	if err := c.conn.WriteJSON(handshake); err != nil {

@@ -5,9 +5,6 @@ import (
 	"testing"
 )
 
-// Mock websocket communication using net.Pipe is complex without mocking the library.
-// We will test the types and basic struct initialization for now to ensure no compilation errors.
-
 func TestConfig(t *testing.T) {
 	c := NewClient(
 		WithServerURL("ws://localhost"),

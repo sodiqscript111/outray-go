@@ -8,11 +8,9 @@ import (
 	"time"
 )
 
-// proxyHTTP proxies an incoming HTTP request to the local service.
 func (c *Client) proxyHTTP(req IncomingRequest) IncomingResponse {
 	targetURL := fmt.Sprintf("http://localhost:%d%s", c.config.Port, req.Path)
 
-	// Create request body reader
 	var bodyReader *strings.Reader
 	if len(req.Body) > 0 {
 		bodyReader = strings.NewReader(string(req.Body))
@@ -25,12 +23,10 @@ func (c *Client) proxyHTTP(req IncomingRequest) IncomingResponse {
 		return IncomingResponse{StatusCode: 500, Body: []byte(err.Error())}
 	}
 
-	// Copy headers
 	for k, v := range req.Headers {
 		proxyReq.Header.Set(k, v)
 	}
 
-	// Execute request
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(proxyReq)
 	if err != nil {
@@ -38,16 +34,14 @@ func (c *Client) proxyHTTP(req IncomingRequest) IncomingResponse {
 	}
 	defer resp.Body.Close()
 
-	// Read response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return IncomingResponse{StatusCode: 500, Body: []byte(err.Error())}
 	}
 
-	// Copy response headers
 	respHeaders := make(map[string]string)
 	for k, v := range resp.Header {
-		respHeaders[k] = v[0] // Simplify: take first value
+		respHeaders[k] = v[0]
 	}
 
 	return IncomingResponse{

@@ -87,7 +87,58 @@ client.Connect(context.Background())
 - `WithProtocol(proto string)`: "http", "tcp", or "udp".
 - `WithPort(port int)`: The local port to tunnel to.
 - `WithServerURL(url string)`: Overrides the default Outray server URL.
+- `WithSubdomain(subdomain string)`: Request a custom subdomain (e.g., "myapp" for myapp.outray.dev).
 - `WithLogger(l Logger)`: Sets a custom logger (must implement `Printf`).
 - `WithOnOpen(fn func(url string))`: Callback when a tunnel is successfully established.
 - `WithOnRequest(fn)`: Handler for incoming HTTP requests.
 - `WithOnError(fn)`: Callback for non-fatal errors.
+- `WithRequestMiddleware(fn)`: Intercept requests before forwarding to localhost.
+- `WithResponseMiddleware(fn)`: Modify responses before sending back.
+
+## Middleware
+
+Middleware allows you to intercept and modify HTTP requests/responses as they pass through the tunnel.
+
+### Request Middleware
+
+Runs before forwarding to your local service. Can modify the request or return an early response.
+
+```go
+client := outray.NewClient(
+	outray.WithAPIKey(os.Getenv("OUTRAY_API_KEY")),
+	outray.WithPort(8080),
+	outray.WithRequestMiddleware(func(req *outray.IncomingRequest) *outray.IncomingResponse {
+		// Log all requests
+		log.Printf("[%s] %s", req.Method, req.Path)
+
+		// Block access to admin routes
+		if req.Path == "/admin" {
+			return &outray.IncomingResponse{
+				StatusCode: 403,
+				Body:       []byte("Forbidden"),
+			}
+		}
+
+		// Add custom header before forwarding
+		req.Headers["X-Tunnel"] = "outray"
+
+		return nil // Continue to local service
+	}),
+)
+```
+
+### Response Middleware
+
+Runs after receiving response from your local service. Can modify headers or body.
+
+```go
+client := outray.NewClient(
+	outray.WithAPIKey(os.Getenv("OUTRAY_API_KEY")),
+	outray.WithPort(8080),
+	outray.WithResponseMiddleware(func(req *outray.IncomingRequest, resp *outray.IncomingResponse) {
+		// Add CORS headers
+		resp.Headers["Access-Control-Allow-Origin"] = "*"
+	}),
+)
+```
+

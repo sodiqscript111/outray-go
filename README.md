@@ -11,7 +11,7 @@ A minimal, idiomatic Go SDK for Outray, enabling local services to be exposed to
 ## Installation
 
 ```bash
-go get github.com/yourusername/outray-go
+go get github.com/sodiqscript111/outray-go
 ```
 
 ## Usage

@@ -6,7 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -381,6 +384,17 @@ func (c *Client) readLoop() error {
 							}
 						}
 					})
+				} else if c.config.Port > 0 && c.config.Protocol == "http" {
+					// Default behavior: Proxy to localhost
+					go func() {
+						resp := c.proxyHTTP(req)
+						resp.ID = req.ID // Ensure ID is set
+						if err := c.SendResponse(resp); err != nil {
+							if c.config.OnError != nil {
+								c.safeOnError(fmt.Errorf("proxy send response error: %w", err))
+							}
+						}
+					}()
 				}
 			}
 		case MsgTypeError:
@@ -389,6 +403,56 @@ func (c *Client) readLoop() error {
 				c.safeOnError(errors.New(msg))
 			}
 		}
+	}
+}
+
+func (c *Client) proxyHTTP(req IncomingRequest) IncomingResponse {
+	targetURL := fmt.Sprintf("http://localhost:%d%s", c.config.Port, req.Path)
+
+	// Create request
+	// Note: We might need to handle body more efficiently in future (io.Reader)
+	// but for now, bytes is fine.
+	var bodyReader *strings.Reader
+	if len(req.Body) > 0 {
+		bodyReader = strings.NewReader(string(req.Body))
+	} else {
+		bodyReader = strings.NewReader("")
+	}
+
+	proxyReq, err := http.NewRequest(req.Method, targetURL, bodyReader)
+	if err != nil {
+		return IncomingResponse{StatusCode: 500, Body: []byte(err.Error())}
+	}
+
+	// Copy headers
+	for k, v := range req.Headers {
+		proxyReq.Header.Set(k, v)
+	}
+
+	// Execute
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(proxyReq)
+	if err != nil {
+		return IncomingResponse{StatusCode: 502, Body: []byte(fmt.Sprintf("Proxy Error: %v", err))}
+	}
+	defer resp.Body.Close()
+
+	// Read response
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return IncomingResponse{StatusCode: 500, Body: []byte(err.Error())}
+	}
+
+	// Copy response headers
+	respHeaders := make(map[string]string)
+	for k, v := range resp.Header {
+		respHeaders[k] = v[0] // Simplify: take first value
+	}
+
+	return IncomingResponse{
+		StatusCode: resp.StatusCode,
+		Headers:    respHeaders,
+		Body:       body,
 	}
 }
 

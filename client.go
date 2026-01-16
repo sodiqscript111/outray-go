@@ -76,6 +76,18 @@ func WithSubdomain(subdomain string) Option {
 	}
 }
 
+func WithCustomDomain(domain string) Option {
+	return func(c *Client) {
+		c.config.CustomDomain = domain
+	}
+}
+
+func WithForceTakeover(force bool) Option {
+	return func(c *Client) {
+		c.config.ForceTakeover = force
+	}
+}
+
 func WithRequestMiddleware(fn RequestMiddleware) Option {
 	return func(c *Client) {
 		c.config.RequestMiddleware = fn
@@ -94,6 +106,8 @@ type Config struct {
 	Protocol           string
 	Port               int
 	Subdomain          string
+	CustomDomain       string
+	ForceTakeover      bool
 	RequestMiddleware  RequestMiddleware
 	ResponseMiddleware ResponseMiddleware
 	OnOpen             func(url string)
@@ -201,11 +215,13 @@ func (c *Client) connectOnce(ctx context.Context) error {
 	}()
 
 	handshake := OpenTunnelRequest{
-		Type:      MsgTypeOpenTunnel,
-		APIKey:    c.config.APIKey,
-		Protocol:  c.config.Protocol,
-		Port:      c.config.Port,
-		Subdomain: c.config.Subdomain,
+		Type:          MsgTypeOpenTunnel,
+		APIKey:        c.config.APIKey,
+		Protocol:      c.config.Protocol,
+		Port:          c.config.Port,
+		Subdomain:     c.config.Subdomain,
+		CustomDomain:  c.config.CustomDomain,
+		ForceTakeover: c.config.ForceTakeover,
 	}
 
 	if err := c.conn.WriteJSON(handshake); err != nil {

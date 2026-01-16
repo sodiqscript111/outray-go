@@ -40,11 +40,13 @@ type UDPResponse struct {
 }
 
 type OpenTunnelRequest struct {
-	Type      string `json:"type"`
-	APIKey    string `json:"apiKey"`
-	Protocol  string `json:"protocol"`
-	Port      int    `json:"remotePort"`
-	Subdomain string `json:"subdomain,omitempty"`
+	Type          string `json:"type"`
+	APIKey        string `json:"apiKey,omitempty"`
+	Protocol      string `json:"protocol,omitempty"`
+	Port          int    `json:"remotePort,omitempty"`
+	Subdomain     string `json:"subdomain,omitempty"`
+	CustomDomain  string `json:"customDomain,omitempty"`
+	ForceTakeover bool   `json:"forceTakeover,omitempty"`
 }
 
 type ServerMessage struct {

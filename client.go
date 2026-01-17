@@ -40,6 +40,12 @@ func WithPort(p int) Option {
 	}
 }
 
+func WithRemotePort(p int) Option {
+	return func(c *Client) {
+		c.config.RemotePort = p
+	}
+}
+
 func WithServerURL(url string) Option {
 	return func(c *Client) {
 		c.config.ServerURL = url
@@ -105,6 +111,7 @@ type Config struct {
 	APIKey             string
 	Protocol           string
 	Port               int
+	RemotePort         int
 	Subdomain          string
 	CustomDomain       string
 	ForceTakeover      bool
@@ -218,7 +225,7 @@ func (c *Client) connectOnce(ctx context.Context) error {
 		Type:          MsgTypeOpenTunnel,
 		APIKey:        c.config.APIKey,
 		Protocol:      c.config.Protocol,
-		Port:          c.config.Port,
+		Port:          c.config.RemotePort,
 		Subdomain:     c.config.Subdomain,
 		CustomDomain:  c.config.CustomDomain,
 		ForceTakeover: c.config.ForceTakeover,
@@ -280,7 +287,7 @@ func (c *Client) readLoop() error {
 		var raw map[string]interface{}
 		if err := c.conn.ReadJSON(&raw); err != nil {
 			if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
-				return nil // Clean exit
+				return nil
 			}
 			return err
 		}

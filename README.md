@@ -14,9 +14,19 @@ A minimal, idiomatic Go SDK for Outray, enabling local services to be exposed to
 go get github.com/sodiqscript111/outray-go
 ```
 
+## Protocol Overview
+
+| Protocol | Remote Port | Local Port | Public Access |
+|----------|-------------|------------|---------------|
+| HTTP | Not required | `WithPort()` | `subdomain.outray.app` |
+| TCP | `WithRemotePort()` (20000-30000) | `WithPort()` | `host.outray.app:port` |
+| UDP | `WithRemotePort()` (30001-40000) | `WithPort()` | `host.outray.app:port` |
+
 ## Usage
 
 ### HTTP Tunnel
+
+HTTP tunnels use subdomain-based routing, so you only need to specify the local port.
 
 ```go
 package main
@@ -31,18 +41,11 @@ import (
 
 func main() {
 	client := outray.NewClient(
-		outray.WithServerURL("wss://api.outray.dev"),
 		outray.WithAPIKey(os.Getenv("OUTRAY_API_KEY")),
 		outray.WithProtocol("http"),
 		outray.WithPort(8080),
 		outray.WithOnOpen(func(url string) {
 			log.Printf("Tunnel Online: %s", url)
-		}),
-		outray.WithOnRequest(func(req outray.IncomingRequest) outray.IncomingResponse {
-			return outray.IncomingResponse{
-				StatusCode: 200,
-				Body:       []byte("Hello from Go!"),
-			}
 		}),
 	)
 
@@ -54,46 +57,86 @@ func main() {
 
 ### TCP Tunnel
 
-Exposing a local TCP service (e.g., SSH or PostgreSQL).
+TCP tunnels require a remote port in the range **20000-30000**.
 
 ```go
-client := outray.NewClient(
-	outray.WithAPIKey(os.Getenv("OUTRAY_API_KEY")),
-	outray.WithProtocol("tcp"),
-	outray.WithPort(5432), // Local Postgres port
+package main
+
+import (
+	"context"
+	"log"
+	"os"
+
+	"github.com/sodiqscript111/outray-go"
 )
 
-// Blocks until context cancelled
-client.Connect(context.Background())
+func main() {
+	client := outray.NewClient(
+		outray.WithAPIKey(os.Getenv("OUTRAY_API_KEY")),
+		outray.WithProtocol("tcp"),
+		outray.WithRemotePort(25000),
+		outray.WithPort(5432),
+		outray.WithOnOpen(func(url string) {
+			log.Printf("TCP Tunnel Online: %s", url)
+		}),
+	)
+
+	if err := client.Connect(context.Background()); err != nil {
+		log.Fatal(err)
+	}
+}
 ```
 
 ### UDP Tunnel
 
-Exposing a local UDP service (e.g., DNS or Game Server).
+UDP tunnels require a remote port in the range **30001-40000**.
 
 ```go
-client := outray.NewClient(
-	outray.WithAPIKey(os.Getenv("OUTRAY_API_KEY")),
-	outray.WithProtocol("udp"),
-	outray.WithPort(53), // Local DNS port
+package main
+
+import (
+	"context"
+	"log"
+	"os"
+
+	"github.com/sodiqscript111/outray-go"
 )
 
-client.Connect(context.Background())
+func main() {
+	client := outray.NewClient(
+		outray.WithAPIKey(os.Getenv("OUTRAY_API_KEY")),
+		outray.WithProtocol("udp"),
+		outray.WithRemotePort(35000),
+		outray.WithPort(53),
+		outray.WithOnOpen(func(url string) {
+			log.Printf("UDP Tunnel Online: %s", url)
+		}),
+	)
+
+	if err := client.Connect(context.Background()); err != nil {
+		log.Fatal(err)
+	}
+}
 ```
 
 ## Configuration Options
 
-- `WithAPIKey(key string)`: Sets the authentication key.
-- `WithProtocol(proto string)`: "http", "tcp", or "udp".
-- `WithPort(port int)`: The local port to tunnel to.
-- `WithServerURL(url string)`: Overrides the default Outray server URL.
-- `WithSubdomain(subdomain string)`: Request a custom subdomain (e.g., "myapp" for myapp.outray.dev).
-- `WithLogger(l Logger)`: Sets a custom logger (must implement `Printf`).
-- `WithOnOpen(fn func(url string))`: Callback when a tunnel is successfully established.
-- `WithOnRequest(fn)`: Handler for incoming HTTP requests.
-- `WithOnError(fn)`: Callback for non-fatal errors.
-- `WithRequestMiddleware(fn)`: Intercept requests before forwarding to localhost.
-- `WithResponseMiddleware(fn)`: Modify responses before sending back.
+| Option | Description |
+|--------|-------------|
+| `WithAPIKey(key string)` | Sets the authentication key |
+| `WithProtocol(proto string)` | "http", "tcp", or "udp" |
+| `WithPort(port int)` | Local port to forward traffic to |
+| `WithRemotePort(port int)` | Server-side port (TCP: 20000-30000, UDP: 30001-40000) |
+| `WithServerURL(url string)` | Overrides the default Outray server URL |
+| `WithSubdomain(subdomain string)` | Request a custom subdomain |
+| `WithCustomDomain(domain string)` | Use a custom domain |
+| `WithForceTakeover(bool)` | Force takeover of existing tunnel |
+| `WithLogger(l Logger)` | Sets a custom logger (must implement `Printf`) |
+| `WithOnOpen(fn func(url string))` | Callback when tunnel is established |
+| `WithOnRequest(fn)` | Handler for incoming HTTP requests |
+| `WithOnError(fn)` | Callback for non-fatal errors |
+| `WithRequestMiddleware(fn)` | Intercept requests before forwarding |
+| `WithResponseMiddleware(fn)` | Modify responses before sending back |
 
 ## Middleware
 
@@ -108,10 +151,8 @@ client := outray.NewClient(
 	outray.WithAPIKey(os.Getenv("OUTRAY_API_KEY")),
 	outray.WithPort(8080),
 	outray.WithRequestMiddleware(func(req *outray.IncomingRequest) *outray.IncomingResponse {
-		// Log all requests
 		log.Printf("[%s] %s", req.Method, req.Path)
 
-		// Block access to admin routes
 		if req.Path == "/admin" {
 			return &outray.IncomingResponse{
 				StatusCode: 403,
@@ -119,10 +160,8 @@ client := outray.NewClient(
 			}
 		}
 
-		// Add custom header before forwarding
 		req.Headers["X-Tunnel"] = "outray"
-
-		return nil // Continue to local service
+		return nil
 	}),
 )
 ```
@@ -136,9 +175,7 @@ client := outray.NewClient(
 	outray.WithAPIKey(os.Getenv("OUTRAY_API_KEY")),
 	outray.WithPort(8080),
 	outray.WithResponseMiddleware(func(req *outray.IncomingRequest, resp *outray.IncomingResponse) {
-		// Add CORS headers
 		resp.Headers["Access-Control-Allow-Origin"] = "*"
 	}),
 )
 ```
-
